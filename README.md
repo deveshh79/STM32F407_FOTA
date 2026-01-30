@@ -1,43 +1,204 @@
-# STM32F407_FOTA
-Firmware Over the Air Update for STM32. Having a custom bootloader and ESP32 as the network interface.
-Robust Dual-Slot FOTA Manager for STM32F407
+<p align="center">
+  <img src="https://raw.githubusercontent.com/STMicroelectronics/STM32CubeF4/master/Drivers/CMSIS/Device/ST/STM32F4xx/Include/stm32f407xx.h" width="120"/>
+</p>
 
-Project Overview
-This project implements an autonomous, cloud-connected Firmware Over-The-Air (FOTA) update system. It utilizes an ESP32 as a host controller to bridge AWS S3 cloud storage with an STM32F407 target. The system is designed with a "safety-first" philosophy, employing a dual-bank memory strategy that allows firmware updates to be streamed into a secondary slot while maintaining a stable primary application, ensuring zero-risk deployments.
-Moving beyond traditional asynchronous methods, this system leverages SPI (Serial Peripheral Interface) to create a high-bandwidth data pipeline. The architecture retains a "safety-first" philosophy, employing a dual-bank memory strategy that streams firmware into a secondary slot while maintaining a stable primary application, ensuring zero-risk deployments with superior transmission speeds.
+<h1 align="center">🚀 STM32F407_FOTA</h1>
 
-Hardware Used
-STM32F407 Discovery Board: The target microcontroller (Cortex-M4) featuring the dual-slot application logic.
-ESP32 (NodeMCU/DevKit): The host controller acting as the SPI Master, managing Wi-Fi connectivity and the update clock.
-Physical Interconnects:  SPI1 (PA4/PA5/PA6/PA7): High-speed synchronous programming interface.
-GPIO Control: Reset (NRST)
-Common Ground: Absolute reference required for signal integrity and noise immunity in high-frequency clocking.
+<p align="center">
+  <b>Robust Dual-Slot Firmware-Over-The-Air (FOTA) Manager</b><br/>
+  <i>Safety-first | Zero-brick | SPI-accelerated updates</i>
+</p>
 
-Hardware Configuration
-The system requires a common ground between the ESP32 and STM32. Wiring is critical for the synchronization phase.The shift to SPI requires a 4-wire bus topology. Unlike UART, wiring length and impedance matching become more critical due to the clock signal (SCK).
-ESP32 Pin	STM32 Pin	Function
-GPIO 23 (MOSI)	PA7 (MOSI)	Data: Host to Target
-GPIO 19 (MISO)	PA6 (MISO)	Data: Target to Host
-GPIO 18 (SCK)	PA5 (SCK)	Clock Source
-GPIO 5 (CS/SS)	PA4 (NSS)	Chip Select / Slave Select
-GND	GND	Common Ground Reference
+<p align="center">
+  <img src="https://img.shields.io/badge/MCU-STM32F407-blue"/>
+  <img src="https://img.shields.io/badge/Host-ESP32-orange"/>
+  <img src="https://img.shields.io/badge/Protocol-SPI-green"/>
+  <img src="https://img.shields.io/badge/FOTA-Dual%20Slot-success"/>
+  <img src="https://img.shields.io/badge/Cloud-AWS%20S3-yellow"/>
+</p>
 
-Software Used
-STM32CubeIDE: Used for developing the Custom Flash Bootloader and the main application code (C/HAL).
-Arduino IDE: Used for developing the ESP32 Host logic (C++/Arduino).
-AWS S3: Cloud infrastructure for binary storage and version metadata.
-ST Serial Bootloader Protocol: The low-level communication standard for flash memory access.
-ST SPI Bootloader Protocol: The specific command set (documented in ST AN4286) used for communicating with the STM32 system memory via SPI.
+---
 
-Key Components & Process Highlights
-Key Components
-Cloud Gateway (AWS S3): Acts as the remote repository for firmware binaries, utilizing ETags for efficient version tracking.
-Host Controller (ESP32): Orchestrates the update lifecycle, including cloud polling, physical pin manipulation (BOOT0/NRST), and protocol execution.
-Custom Flash Bootloader (STM32): A dedicated first-stage bootloader residing in Sector 0 that manages the logic-based jump between Slot A and Slot B.
-SPI Master (ESP32): Orchestrates the update lifecycle. It controls the bus clock, manages the Chip Select (NSS) line to frame transactions, and handles physical pin manipulation.
-SPI Slave (STM32 Bootloader): Listens on the SPI bus. It receives commands and data strictly on the clock edges provided by the ESP32.
-Metadata Sector: A reserved Flash region (Sector 11) used to store the "Magic Number" and boot flags required for atomic commitment.
-Protocol: ST SPI Bootloader (Ack/Nack handling).Synchronization: ESP32 sends "Dummy Bytes" to clock out the Acknowledgement (ACK) byte from the STM32.
+## 🌟 Overview
 
-Achievements
-Fail-Safe Redundancy: Successfully implemented a dual-slot layout that prevents system bricking during interrupted updates.
+**STM32F407_FOTA** is a production-grade **Firmware Over-The-Air update system** designed for embedded devices that **must never brick**.
+
+It combines:
+- A **custom STM32 flash bootloader**
+- A **dual-slot (A/B) firmware architecture**
+- An **ESP32 Wi-Fi host**
+- A **high-speed SPI update pipeline**
+- **Cloud-driven versioning via AWS S3**
+
+> ⚠️ Firmware updates are streamed into an *inactive slot* while the active application continues running — ensuring **zero-risk deployments**.
+
+---
+
+## 🧠 Design Philosophy
+
+✅ Safety over speed  
+✅ Atomic updates  
+✅ Deterministic communication  
+✅ Autonomous operation  
+✅ Production-ready fault tolerance  
+
+This system was built to **survive power loss, network dropouts, and partial writes** without ever leaving the device unbootable.
+
+---
+
+## 🏗️ System Architecture
+
+```text
+          ┌────────────────────┐
+          │      AWS S3        │
+          │ Firmware + Metadata│
+          └─────────┬──────────┘
+                    │ Wi-Fi
+             ┌──────▼───────┐
+             │    ESP32     │
+             │ SPI Master   │
+             │ Update Logic │
+             └──────┬───────┘
+                    │ SPI (MOSI/MISO/SCK/CS)
+        ┌───────────▼──────────┐
+        │       STM32F407      │
+        │  Custom Flash Loader │
+        │ ┌────────┬─────────┐ │
+        │ │ Slot A │ Slot B  │ │
+        │ └────────┴─────────┘ │
+        └──────────────────────┘
+```
+## 🔩 Hardware Components
+
+### 🎯 Target MCU
+- **STM32F407 Discovery**
+  - ARM Cortex-M4
+  - Custom flash bootloader (Sector 0)
+  - Dual firmware slots (A / B)
+
+### 🌐 Host Controller
+- **ESP32 (NodeMCU / DevKit)**
+  - Wi-Fi connectivity
+  - SPI Master
+  - Boot control via **BOOT0 / NRST**
+
+### 🔗 Physical Interconnect
+- **SPI1** – High-speed synchronous programming interface  
+- GPIO-controlled reset line  
+- Mandatory common ground reference  
+
+---
+
+## 🔌 Hardware Wiring (SPI)
+
+> ⚠️ **Important:** SPI requires short wiring, clean grounding, and impedance awareness due to the clock signal (SCK).
+
+| ESP32 Pin | STM32F407 Pin | Signal |
+|----------|---------------|--------|
+| GPIO 23  | PA7 | MOSI (Host → Target) |
+| GPIO 19  | PA6 | MISO (Target → Host) |
+| GPIO 18  | PA5 | SCK (Clock) |
+| GPIO 5   | PA4 | NSS / CS |
+| GND      | GND | Common Ground |
+
+---
+
+## 🧪 Software Stack
+
+### STM32
+- **STM32CubeIDE**
+- HAL-based custom flash bootloader
+- Slot-aware application logic
+
+### ESP32
+- **Arduino IDE**
+- Wi-Fi + SPI Master controller
+- Firmware update orchestrator
+
+### ☁️ Cloud
+- **AWS S3**
+  - Firmware binaries
+  - Version metadata
+  - ETag-based update detection
+
+---
+
+## 📡 Communication Protocol
+
+- **ST Serial Bootloader Protocol**
+- **ST SPI Bootloader Protocol** (AN4286 compliant)
+
+**Key Characteristics**
+- 🔁 ACK / NACK handling  
+- ⏱ Dummy-byte clocking for response reads  
+- 🔒 Deterministic, state-driven execution  
+
+---
+
+## 🧩 Core Components
+
+### ☁️ Cloud Gateway (AWS S3)
+- Stores firmware images
+- Provides version metadata
+- Enables autonomous update checks
+
+### 🧠 ESP32 Host
+- Polls cloud for firmware updates
+- Controls **BOOT0** and **NRST**
+- Drives SPI clock and framing
+- Streams firmware to STM32
+
+### 🛠 STM32 Flash Bootloader
+- Resides in Flash **Sector 0**
+- Selects Slot A or Slot B
+- Verifies update integrity
+- Performs safe application jump
+
+### 🧾 Metadata Sector
+- Reserved Flash **Sector 11**
+- Stores:
+  - Magic number
+  - Active slot flag
+  - Update validity marker
+
+> 🔐 Enables **atomic commit and rollback protection**
+
+---
+
+## 🔁 Firmware Update Flow
+
+1. ESP32 polls AWS S3 for updates  
+2. New firmware version detected (ETag)  
+3. STM32 forced into bootloader mode  
+4. SPI session initialized  
+5. Firmware streamed into inactive slot  
+6. Metadata updated atomically  
+7. System reboot  
+8. New firmware validated  
+9. Automatic rollback on validation failure  
+
+---
+
+## ⚠️ Important Notes
+
+- ESP32 **fully controls the SPI clock**
+- STM32 responds strictly on clock edges
+- Dummy bytes are required to read ACK responses
+- Wiring quality directly impacts system stability
+
+---
+
+## 📜 License
+
+This project is intended for **educational and experimental use**.  
+Evaluate and harden further before deploying in safety-critical systems.
+
+---
+
+## ⭐ If You Like This Project
+
+Give it a ⭐ and feel free to:
+- Fork it
+- Extend it
+- Adapt it for production
+- Use it as a reference architecture
